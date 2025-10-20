@@ -8,17 +8,20 @@
 3. Initialiser notre interface CAN grâce à la structure que nous avons créer pour stocker les information sur le bus CAN.
 `can_data_t *hcan`
   
-   `` hcan->instance   = instance;
+   ``c
+    hcan->instance   = instance;
 	hcan->brp        = 6;
 	hcan->phase_seg1 = 13;
 	hcan->phase_seg2 = 2;
-	hcan->sjw        = 1;``
+	hcan->sjw        = 1;
+    ``
 
 4. Configuration du timming du bus CAN (`vitesse de communication`, `nombre de quanta`, etc.)
     - Vérification des  valeur données.
     - Enregistrement dans la structure `hcan` si tout est ok.
 
-``if ( (brp>0) && (brp<=1024)
+``c
+if ( (brp>0) && (brp<=1024)
 	  && (phase_seg1>0) && (phase_seg1<=16)
 	  && (phase_seg2>0) && (phase_seg2<=8)
 	  && (sjw>0) && (sjw<=4)
@@ -30,7 +33,8 @@
 		return true;
 	} else {
 		return false;
-}``
+}
+``
 * `brp` 10 bits de large (0–1023), donc 1024 valeurs possibles
 * `phase_seg1` codé sur 4 bits
 * `phase_seg2` codé sur 3 bits
@@ -44,3 +48,11 @@
     - Le timing des bits (BTR)
     - La configuration des filtres de réception
     - L’éventuelle sortie du mode veille
+
+5. 1. Préparation du registre MCR (Master Control Register)
+``c
+uint32_t mcr = CAN_MCR_INRQ
+             | CAN_MCR_ABOM
+             | CAN_MCR_TXFP
+             | (one_shot ? CAN_MCR_NART : 0);
+``
