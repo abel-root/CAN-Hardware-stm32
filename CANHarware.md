@@ -20,7 +20,7 @@
     - Vérification des  valeur données.
     - Enregistrement dans la structure `hcan` si tout est ok.
 
-``c
+``
 if ( (brp>0) && (brp<=1024)
 	  && (phase_seg1>0) && (phase_seg1<=16)
 	  && (phase_seg2>0) && (phase_seg2<=8)
@@ -49,10 +49,44 @@ if ( (brp>0) && (brp<=1024)
     - La configuration des filtres de réception
     - L’éventuelle sortie du mode veille
 
-5. 1. Préparation du registre MCR (Master Control Register)
-``c
+  1. Préparation du registre MCR (Master Control Register)
+``
 uint32_t mcr = CAN_MCR_INRQ
              | CAN_MCR_ABOM
              | CAN_MCR_TXFP
              | (one_shot ? CAN_MCR_NART : 0);
 ``
+ 2. Préparation du registre BTR (Bit Timing Register)
+ ``
+ uint32_t btr = ((uint32_t)(hcan->sjw-1)) << 24
+             | ((uint32_t)(hcan->phase_seg1-1)) << 16
+             | ((uint32_t)(hcan->phase_seg2-1)) << 20
+             | (hcan->brp - 1)
+             | (loop_back ? CAN_MODE_LOOPBACK : 0)
+             | (listen_only ? CAN_MODE_SILENT : 0);
+``
+> Ces décalages (<<) sont basés sur la position des champs dans le registre BTR (définie dans le Reference Manual du STM32).
+
+   3. Réinitialisation du périphérique CAN
+    ``
+    can->MCR |= CAN_MCR_RESET;
+    while((can->MCR & CAN_MCR_RESET) != 0); // attendre fin du reset
+    while((can->MSR & CAN_MSR_SLAK) == 0);  // attendre qu'il passe en mode Sleep
+    ``
+   4. Entrée en mode “Initialisation”
+    ``can->MCR |= CAN_MCR_INRQ;
+    while((can->MSR & CAN_MSR_INAK) == 0);``
+    > On demande au CAN de passer en mode configuration (INRQ).Le while attend que le bit “INAK” (initialization acknowledge) soit activé → le CAN est prêt à recevoir les paramètres.
+
+    5. Écriture effective des registres 
+    Configure le mode et le timing
+
+    6. Sort du mode init
+    Active le CAN pour la comm
+
+    7. Configure filtres
+    Définit quels messages seront reçus
+    
+    8. Active transceiver
+    Réveille le circuit physique du bus
+ 
